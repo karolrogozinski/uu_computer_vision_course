@@ -35,7 +35,7 @@ class CameraCalibration:
         :param img_dir: Directory containing calibration images.
         """
         for fname in os.listdir(img_dir):
-            if fname == 'test_image.jpg':
+            if fname in ['test_image.jpg', '.gitignore']:
                 continue
             img_path = os.path.join(img_dir, fname)
             self._process_single_image(img_path)
@@ -64,7 +64,7 @@ class CameraCalibration:
 
         cv.drawChessboardCorners(img, self.grid_size, corners2, True)
         cv.imshow('img', img)
-        cv.waitKey(500)  # Display time - can be adjusted
+        cv.waitKey(50)  # Display time - can be adjusted
 
     def _manual_corner_selection(self, img: np.ndarray) -> np.ndarray:
         """

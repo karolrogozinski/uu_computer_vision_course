@@ -22,6 +22,11 @@ class CameraTracking:
         self.objp = objp
         self.cell_size = cell_size
 
+    def test_image(self, dir, image):
+        frame = cv.imread(f'./img/{image}')
+        self._process_frame(frame)
+        cv.imwrite(f'{dir}{image}', frame)
+
     def track(self) -> None:
         """
         Starts the real-time tracking process using a webcam.
@@ -86,13 +91,13 @@ class CameraTracking:
         cube_imgpts, _ = cv.projectPoints(cube_points, rvec, tvec,
                                           self.mtx, self.dist)
         self.draw_cube(frame, np.int32(cube_imgpts).reshape(-1, 2),
-                       (200, 200, 200), thickness=5)
+                       (100, 100, 100), thickness=10)
 
         # Polygon
         top_color = self.get_dynamic_color(tvec, rvec)
         cv.fillConvexPoly(
             frame, np.array([cube_imgpts[4], cube_imgpts[5], cube_imgpts[6],
-                             cube_imgpts[7]], dtype=np.int32), top_color
+                            cube_imgpts[7]], dtype=np.int32), top_color
         )
 
     @staticmethod
@@ -109,9 +114,9 @@ class CameraTracking:
         imgpts = np.int32(imgpts).reshape(-1, 2)
         origin = np.int32(origin).reshape(2)
 
-        cv.line(img, origin, tuple(imgpts[1]), (0, 0, 255), 5)
-        cv.line(img, origin, tuple(imgpts[2]), (0, 255, 0), 5)
-        cv.line(img, origin, tuple(imgpts[3]), (255, 0, 0), 5)
+        cv.line(img, origin, tuple(imgpts[1]), (0, 0, 255), 15)
+        cv.line(img, origin, tuple(imgpts[2]), (0, 255, 0), 15)
+        cv.line(img, origin, tuple(imgpts[3]), (255, 0, 0), 15)
 
     @staticmethod
     def draw_cube(
@@ -161,9 +166,13 @@ class CameraTracking:
         angle = np.arccos(np.dot(top_normal, camera_direction)) * (180 / np.pi)
         S = int(max(0, 255 * (1 - min(angle / 45, 1))))
 
-        # TODO idk if this H is OK
-        # Hue based on the X-position of the camera
-        H = int(tvec[0][0] % 180)
+        # Hue based on the rotation of the camera
+        R, _ = cv.Rodrigues(rvec)
+        chessboard_x_axis = R[:, 0]
+        camera_x_axis = np.array([1, 0, 0])
+        dot_product = np.dot(chessboard_x_axis, camera_x_axis)
+        yaw_angle = np.arccos(dot_product) * (180 / np.pi)
+        H = int(round((yaw_angle % 360)))
 
         # TODO fix this color (I think its not correctly converted from HSV tp BGR)
         bgr_color = cv.cvtColor(np.uint8([[[H, S, V]]]),

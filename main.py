@@ -18,10 +18,14 @@ def assigment_1() -> None:
     calibrations = calibration.calibrate_camera(IMAGE_SIZE)
 
     # Online loops
+    i = 0
     for mtx, dist in calibrations:
+        print(mtx)
         tracker = CameraTracking(mtx, dist, calibration.objp,
                                  REAL_CELL_SIZE_MM)
-        tracker.track()
+        tracker.test_image('./tests/', f'test_image_{i}.jpg')
+        # tracker.track()
+        i += 1
 
 
 def main() -> None:
