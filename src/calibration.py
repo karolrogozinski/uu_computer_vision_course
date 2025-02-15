@@ -35,7 +35,7 @@ class CameraCalibration:
         :param img_dir: Directory containing calibration images.
         """
         for fname in os.listdir(img_dir):
-            if fname == 'test_image.jpg':
+            if fname in ('test_image.jpg', '.gitignore'):
                 continue
             img_path = os.path.join(img_dir, fname)
             self._process_single_image(img_path)
@@ -56,15 +56,13 @@ class CameraCalibration:
         corners2 = cv.cornerSubPix(
             gray, corners, (11, 11), (-1, -1), self.criteria)
 
-        print(corners.shape)
-
         self.objpoints.append(self.objp)
         self.imgpoints.append(corners2)
         self.detected_automatically.append(ret)
 
         cv.drawChessboardCorners(img, self.grid_size, corners2, True)
         cv.imshow('img', img)
-        cv.waitKey(500)  # Display time - can be adjusted
+        cv.waitKey(50)  # Display time - can be adjusted
 
     def _manual_corner_selection(self, img: np.ndarray) -> np.ndarray:
         """
@@ -82,7 +80,7 @@ class CameraCalibration:
         collector.interpolate()
         return collector.grid
 
-    def calibrate_camera(self, gray_shape: tuple[int, int]
+    def calibrate_camera(self, gray_shape: tuple[int, int], rejection_th: float
                          ) -> list[tuple[np.ndarray, np.ndarray]]:
         """
         Calibrates the camera using the detected chessboard corners.
@@ -90,16 +88,54 @@ class CameraCalibration:
         :param gray_shape: Shape of the grayscale image used for calibration.
         :return: List of tuples containing camera matrix and distortion coeffs.
         """
-        objpoints_np = np.array(self.objpoints)
-        imgpoints_np = np.array(self.imgpoints)
+        objpoints = np.array(self.objpoints)
+        imgpoints = np.array(self.imgpoints)
         idx_sets = self._get_index_sets()
 
         calibrations = []
         for idxs in idx_sets:
+            _, mtx, dist, rvecs, tvecs = cv.calibrateCamera(
+                objpoints[idxs], imgpoints[idxs], gray_shape, None, None)
+
+            rejected_indices = self.get_bad_quality_indices(
+                idxs, tvecs, rvecs, mtx, dist, rejection_th)
+
+            new_idxs = [idx for idx in idxs if idx not in rejected_indices]
+            idxs = new_idxs if len(new_idxs) >= 5 else idxs
+
             _, mtx, dist, _, _ = cv.calibrateCamera(
-                objpoints_np[idxs], imgpoints_np[idxs], gray_shape, None, None)
+                objpoints[idxs], imgpoints[idxs], gray_shape, None, None)
+
             calibrations.append((mtx, dist))
         return calibrations
+
+    def get_bad_quality_indices(self, indices: list[list[int]], tvecs: np.ndarray,
+                                rvecs: np.ndarray, mtx: np.ndarray, dist: np.ndarray,
+                                rejection_th: float) -> list[int]:
+        """
+        Identifies calibration images with high reprojection error.
+
+        :param indices: List of index sets representing images used in
+            calibration.
+        :param tvecs: Translation vectors obtained from calibration.
+        :param rvecs: Rotation vectors obtained from calibration.
+        :param mtx: Camera matrix.
+        :param dist: Distortion coefficients.
+        :param rejection_th: Threshold for rejecting images based on
+            reprojection error.
+        :return: List of indices of images with reprojection error exceeding
+            the threshold.
+        """
+        errors = []
+        for i, idx in enumerate(indices):
+            reprojected, _ = cv.projectPoints(
+                np.array(self.objpoints)[idx], rvecs[i], tvecs[i], mtx, dist)
+            mean_error = np.mean(np.linalg.norm(
+                np.array(self.imgpoints)[i] - reprojected, axis=2))
+            errors.append((mean_error, idx))
+
+        rejected_indices = [idx for error, idx in errors if error > rejection_th]
+        return rejected_indices
 
     def _get_index_sets(self) -> list[list[int]]:
         """
@@ -150,31 +186,6 @@ class ManualGrid:
             print('Clicked corner', (x, y))
             self.points.append([x, y])
 
-    # def interpolate(self) -> None:
-    #     """
-    #     Interpolates a grid of points based on the user-provided corner points.
-    #     """
-    #     top_left, top_right, bot_left, bot_right = self.sorted_corners()
-
-    #     top_row = [
-    #         self.interpolate_pair(top_left, top_right, i / (self.cols - 1))
-    #         for i in range(self.cols)
-    #     ]
-    #     bot_row = [
-    #         self.interpolate_pair(bot_left, bot_right, i / (self.cols - 1))
-    #         for i in range(self.cols)
-    #     ]
-
-    #     grid_points: list[tuple[float, float]] = []
-    #     for row in range(self.rows):
-    #         row_points = [
-    #             self.interpolate_pair(top_row[i], bot_row[i], row / (self.rows - 1))
-    #             for i in range(self.cols)
-    #         ]
-    #         grid_points.extend(row_points)
-
-    #     self.grid = np.array(grid_points, dtype=np.float32).reshape(-1, 1, 2)
-
     def interpolate(self) -> None:
         """
         Interpolates a grid of points based on the user-provided corner points.
@@ -200,7 +211,6 @@ class ManualGrid:
             grid_points.extend(col_points)
 
         self.grid = np.array(grid_points, dtype=np.float32).reshape(-1, 1, 2)
-
 
     @staticmethod
     def interpolate_pair(point1: tuple[float, float],

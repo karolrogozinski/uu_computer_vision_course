@@ -1,4 +1,8 @@
+import datetime
+import os
+
 import cv2 as cv
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -22,6 +26,18 @@ class CameraTracking:
         self.objp = objp
         self.cell_size = cell_size
 
+    def test_image(self, dir: str, image: str):
+        """
+        Draw a polygon that covers the top side of the cube on the given img
+
+        :param dir: Directory of the image
+        :param image: Filename of the image
+        """
+        frame = cv.imread(f'./img/{image}')
+        self._process_frame(frame)
+
+        cv.imwrite(f'{dir}{image}', frame)
+
     def track(self) -> None:
         """
         Starts the real-time tracking process using a webcam.
@@ -31,7 +47,12 @@ class CameraTracking:
             ret, frame = cap.read()
 
             if ret:
-                self._process_frame(frame)
+                try:
+                    rvec, tvec = self._process_frame(frame)
+                except TypeError:  # corners not found
+                    print('błą')
+                    continue
+                self._draw_objects(frame, rvec, tvec)
             cv.imshow('Live Tracking', frame)
             if cv.waitKey(1) & 0xFF == ord('q'):  # q for breaking loop
                 break
@@ -42,8 +63,7 @@ class CameraTracking:
         """
         Processes a frame to detect a chessboard and estimate pose.
 
-        Args:
-            frame (np.ndarray): The input image frame.
+        :param frame: The input image frame.
         """
         self.gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         found, corners = cv.findChessboardCorners(self.gray, (9, 6), None)
@@ -55,7 +75,7 @@ class CameraTracking:
             (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
         )
         _, rvec, tvec = cv.solvePnP(self.objp, corners2, self.mtx, self.dist)
-        self._draw_objects(frame, rvec, tvec)
+        return rvec, tvec
 
     def _draw_objects(
         self, frame: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
@@ -63,10 +83,9 @@ class CameraTracking:
         """
         Draws 3D objects (axes and cube) on the given frame.
 
-        Args:
-            frame (np.ndarray): The input image frame.
-            rvec (np.ndarray): The rotation vector.
-            tvec (np.ndarray): The translation vector.
+        :param frame: The input image frame.
+        :param rvec: The rotation vector.
+        :param tvec: The translation vector.
         """
 
         # Axes
@@ -101,10 +120,9 @@ class CameraTracking:
         """
         Draws the XYZ coordinate axes from the origin.
 
-        Args:
-            img (np.ndarray): The image on which to draw the axes.
-            origin (np.ndarray): The origin point of the axes.
-            imgpts (np.ndarray): The projected points representing the axes.
+        :param img: The image on which to draw the axes.
+        :param origin: The origin point of the axes.
+        :param imgpts: The projected points representing the axes.
         """
         imgpts = np.int32(imgpts).reshape(-1, 2)
         origin = np.int32(origin).reshape(2)
@@ -121,11 +139,10 @@ class CameraTracking:
         """
         Draws a cube using projected 2D points.
 
-        Args:
-            img (np.ndarray): The image on which to draw the cube.
-            imgpts (np.ndarray): The projected 2D points of the cube.
-            color (Tuple[int, int, int]): The color of the cube edges (B, G, R).
-            thickness (int, optional): The thickness of the edges. Defaults to 5.
+        :param img: The image on which to draw the cube.
+        :param imgpts : The projected 2D points of the cube.
+        :param color: The color of the cube edges (B, G, R).
+        :param thickness: The thickness of the edges. Defaults to 5.
         """
         # Base edges
         for i, j in zip(range(4), [1, 2, 3, 0]):
@@ -143,12 +160,10 @@ class CameraTracking:
         """
         Computes the top face color based on distance and orientation.
 
-        Args:
-            tvec (np.ndarray): The translation vector.
-            rvec (np.ndarray): The rotation vector.
+        :param tvec: The translation vector.
+        :param rvec: The rotation vector.
 
-        Returns:
-            Tuple[int, int, int]: The computed BGR color.
+        :return: The computed BGR color.
         """
         # Value based on the euclidean distance from the camera
         distance = np.linalg.norm(tvec)
@@ -161,12 +176,58 @@ class CameraTracking:
         angle = np.arccos(np.dot(top_normal, camera_direction)) * (180 / np.pi)
         S = int(max(0, 255 * (1 - min(angle / 45, 1))))
 
-        # TODO idk if this H is OK
-        # Hue based on the X-position of the camera
-        H = int(tvec[0][0] % 180)
+        # Hue based on the rotation of the camera
+        R, _ = cv.Rodrigues(rvec)
+        chessboard_x_axis = R[:, 0]
+        camera_x_axis = np.array([1, 0, 0])
+        dot_product = np.dot(chessboard_x_axis, camera_x_axis)
+        yaw_angle = np.arccos(dot_product) * (180 / np.pi)
+        H = int(round((yaw_angle % 360)))
 
-        # TODO fix this color (I think its not correctly converted from HSV tp BGR)
         bgr_color = cv.cvtColor(np.uint8([[[H, S, V]]]),
                                 cv.COLOR_HSV2BGR)[0][0]
 
         return tuple(map(int, bgr_color))
+
+    def plot_camera_position(self, img_dir: str) -> None:
+        """
+        Plots the estimated camera positions and orientations in a 3D space.
+
+        :param img_dir: Directory containing images used for camera pose estimation.
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        x, y, z = self.objp[:, 0], self.objp[:, 1], self.objp[:, 2]
+        ax.scatter(x, y, z, c='black', marker='x', alpha=0.5, label='Checkerboard')
+
+        for fname in os.listdir(img_dir):
+            if fname in ('test_image.jpg', '.gitignore'):
+                continue
+            img_path = os.path.join(img_dir, fname)
+
+            frame = cv.imread(img_path)
+            try:
+                rvec, tvec = self._process_frame(frame)
+            except TypeError:  # corners not found
+                continue
+
+            R, _ = cv.Rodrigues(rvec)
+            camera_position = -R.T @ tvec
+
+            x, y, z = camera_position.flatten()
+            ax.text(x, y, z, fname[-8:-4], color='black', fontsize=8)
+            ax.scatter(x, y, z, c='purple', marker='o', label='Camera Position')
+            ax.quiver(x, y, z, R[0, 2], -R[1, 2], R[2, 2], length=60,
+                      color='purple', alpha=.25)
+
+        ax.invert_zaxis()
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('Camera Positions')
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"./fig/camera_positions_{timestamp}.png"
+        plt.savefig(filename)
+        plt.close()
