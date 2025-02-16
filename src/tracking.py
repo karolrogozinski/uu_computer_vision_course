@@ -34,9 +34,13 @@ class CameraTracking:
         :param image: Filename of the image
         """
         frame = cv.imread(f'./img/{image}')
-        self._process_frame(frame)
+        rvec, tvec = self._process_frame(frame)
+        self._draw_objects(frame, rvec, tvec)
 
-        cv.imwrite(f'{dir}{image}', frame)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"test_image_{timestamp}.png"
+
+        cv.imwrite(f'{dir}{filename}', frame)
 
     def track(self) -> None:
         """
@@ -49,10 +53,9 @@ class CameraTracking:
             if ret:
                 try:
                     rvec, tvec = self._process_frame(frame)
+                    self._draw_objects(frame, rvec, tvec)
                 except TypeError:  # corners not found
-                    print('błą')
-                    continue
-                self._draw_objects(frame, rvec, tvec)
+                    pass
             cv.imshow('Live Tracking', frame)
             if cv.waitKey(1) & 0xFF == ord('q'):  # q for breaking loop
                 break

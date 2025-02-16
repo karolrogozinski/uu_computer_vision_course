@@ -23,11 +23,12 @@ def assigment_1() -> None:
     for mtx, dist in calibrations:
         tracker = CameraTracking(mtx, dist, calibration.objp,
                                  REAL_CELL_SIZE_MM)
-        print('Starting camera...')
+        print('--------------------')
+        print('Starting camera... (press "q" to end live view)')
         tracker.track()
         print('Saving test image...')
         tracker.test_image('./tests/', 'test_image.jpg')
-        print('Saving camera positions')
+        print('Saving camera positions...')
         tracker.plot_camera_position('img')
 
 
