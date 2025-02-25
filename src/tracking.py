@@ -89,7 +89,7 @@ class CameraTracking:
         return rvec, tvec
 
     def draw_objects(
-        self, frame: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
+        self, frame: np.ndarray, rvec: np.ndarray, tvec: np.ndarray, cube: bool = True, axes: bool = True  
     ) -> None:
         """
         Draws 3D objects (axes and cube) on the given frame.
@@ -100,33 +100,35 @@ class CameraTracking:
         """
 
         # Axes
-        axis_points = np.float32(
-            [[0, 0, 0], [3, 0, 0], [0, 3, 0], [0, 0, -3]]
-        ) * self.cell_size
-        axis_imgpts, _ = cv.projectPoints(axis_points, rvec, tvec,
-                                          self.mtx, self.dist)
-        self.draw_axes(frame, tuple(axis_imgpts[0].ravel()),
-                       np.int32(axis_imgpts).reshape(-1, 2))
+        if axes:
+            axis_points = np.float32(
+                [[0, 0, 0], [3, 0, 0], [0, 3, 0], [0, 0, -3]]
+            ) * self.cell_size
+            axis_imgpts, _ = cv.projectPoints(axis_points, rvec, tvec,
+                                            self.mtx, self.dist)
+            self.draw_axes(frame, tuple(axis_imgpts[0].ravel()),
+                        np.int32(axis_imgpts).reshape(-1, 2))
 
         # Cube
-        cube_points = np.float32([
-            [0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0],
-            [0, 0, -2], [2, 0, -2], [2, 2, -2], [0, 2, -2]
-        ]) * self.cell_size
-        cube_imgpts, _ = cv.projectPoints(cube_points, rvec, tvec,
-                                          self.mtx, self.dist)
-        self.draw_cube(frame, np.int32(cube_imgpts).reshape(-1, 2),
-                       (200, 200, 200), thickness=5)
+        if cube:
+            cube_points = np.float32([
+                [0, 0, 0], [2, 0, 0], [2, 2, 0], [0, 2, 0],
+                [0, 0, -2], [2, 0, -2], [2, 2, -2], [0, 2, -2]
+            ]) * self.cell_size
+            cube_imgpts, _ = cv.projectPoints(cube_points, rvec, tvec,
+                                            self.mtx, self.dist)
+            self.draw_cube(frame, np.int32(cube_imgpts).reshape(-1, 2),
+                        (200, 200, 200), thickness=2)
 
-        # Polygon
-        top_color = self.get_dynamic_color(tvec, rvec)
-        cv.fillConvexPoly(
-            frame, np.array([cube_imgpts[4], cube_imgpts[5], cube_imgpts[6],
-                             cube_imgpts[7]], dtype=np.int32), top_color
-        )
+            # Polygon
+            top_color = self.get_dynamic_color(tvec, rvec)
+            cv.fillConvexPoly(
+                frame, np.array([cube_imgpts[4], cube_imgpts[5], cube_imgpts[6],
+                                cube_imgpts[7]], dtype=np.int32), top_color
+            )
 
     @staticmethod
-    def draw_axes(img: np.ndarray, origin: np.ndarray, imgpts: np.ndarray
+    def draw_axes(img: np.ndarray, origin: np.ndarray, imgpts: np.ndarray, thickness: int = 5
                   ) -> None:
         """
         Draws the XYZ coordinate axes from the origin.
@@ -138,14 +140,15 @@ class CameraTracking:
         imgpts = np.int32(imgpts).reshape(-1, 2)
         origin = np.int32(origin).reshape(2)
 
-        cv.line(img, origin, tuple(imgpts[1]), (0, 0, 255), 5)
-        cv.line(img, origin, tuple(imgpts[2]), (0, 255, 0), 5)
-        cv.line(img, origin, tuple(imgpts[3]), (255, 0, 0), 5)
+        thickness = 2
+        cv.line(img, origin, tuple(imgpts[1]), (0, 0, 255), thickness)
+        cv.line(img, origin, tuple(imgpts[2]), (0, 255, 0), thickness)
+        cv.line(img, origin, tuple(imgpts[3]), (255, 0, 0), thickness)
 
     @staticmethod
     def draw_cube(
         img: np.ndarray, imgpts: np.ndarray,
-        color: tuple[int, int, int], thickness: int = 5
+        color: tuple[int, int, int], thickness: int = 2
     ) -> None:
         """
         Draws a cube using projected 2D points.

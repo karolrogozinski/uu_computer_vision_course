@@ -4,7 +4,7 @@ import cv2 as cv
 
 from src.calibration import CameraCalibration
 from src.tracking import CameraTracking
-from src.utils import extract_frames
+from src.utils import extract_frames, generate_xml
 
 
 # Configuration
@@ -67,6 +67,7 @@ def assigment_2() -> None:
 
         video_path = f'./data/{camera}/checkerboard.avi'
         frames = extract_frames(video_path, 1)
+        calibration.reset_points()
         calibration.process_frames_list(frames)
 
         objp = calibration.objpoints[0]
@@ -76,14 +77,18 @@ def assigment_2() -> None:
         tracker = CameraTracking(mtx, dist, calibration.objp,
                                  REAL_CELL_SIZE_MM, GRID_SIZE)
         _, rvec, tvec = cv.solvePnP(objp, corners, mtx, dist)
-        tracker.draw_objects(frames[0], rvec, tvec)
+
+        frames = extract_frames(video_path, 1)
+        tracker.draw_objects(frames[0], rvec, tvec, cube= False)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"test_image_{timestamp}.png"
 
         cv.imwrite(f'tests/{filename}', frames[0])
 
         calibration_dict[camera]['rvec'] = rvec
-        calibration_dict[camera]['dist'] = tvec
+        calibration_dict[camera]['tvec'] = tvec
+    
+        generate_xml(f"data/{camera}/config.xml", calibration_dict[camera])
 
 
 def main() -> None:

@@ -27,5 +27,18 @@ def extract_frames(video_path: str, num_frames: int) -> list[np.ndarray]:
     return frames
 
 
-def generate_xml() -> None:
-    root = ET.Element("opencv_storage")
+def generate_xml(filename: str, calibration_dict: dict) -> None:
+    """
+    Saves the calibration dictionary to an XML file.
+
+    :param filename: Path to the XML file.
+    :param calibration_dict: Dictionary containing camera parameters.
+    """
+    fs = cv.FileStorage(filename, cv.FILE_STORAGE_WRITE)
+
+    fs.write("CameraMatrix", calibration_dict['mtx'])
+    fs.write("DistortionCoeffs", calibration_dict['dist'])
+    fs.write("RotationVector", calibration_dict['rvec'])
+    fs.write("TranslationVector", calibration_dict['tvec'])
+
+    fs.release()
