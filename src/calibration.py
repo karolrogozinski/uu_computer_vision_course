@@ -24,6 +24,12 @@ class CameraCalibration:
             0:grid_size[0], 0:grid_size[1]].T.reshape(-1, 2) * cell_size
         self.grid_size = grid_size
 
+        self.reset_points()
+
+    def reset_points(self) -> None:
+        """
+        Set points to empty lists
+        """
         self.objpoints: list[np.ndarray] = []
         self.imgpoints: list[np.ndarray] = []
         self.detected_automatically: list[bool] = []
@@ -41,13 +47,26 @@ class CameraCalibration:
             self._process_single_image(img_path)
         cv.destroyAllWindows()
 
-    def _process_single_image(self, img_path: str) -> None:
+    def process_frames_list(self, frames: list[np.ndarray]) -> None:
+        """
+        Processes all frmaes in the given list to detect the corners.
+
+        :param frames: List containing calibration frames.
+        """
+        for frame in frames:
+            self._process_single_image(frame, source='variable')
+        cv.destroyAllWindows()
+
+    def _process_single_image(self, img: str | np.ndarray, source: str = 'file') -> None:
         """
         Processes a single image for chessboard corner detection.
 
-        :param img_path: Path to the image file.
+        :param img_path: Path to the image file or loaded frame is source is not file.
+        :param source: Source of the img - file | variable.
         """
-        img = cv.imread(img_path)
+        if source == 'file':
+            img = cv.imread(img)
+
         gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         ret, corners = cv.findChessboardCorners(gray, self.grid_size, None)
 

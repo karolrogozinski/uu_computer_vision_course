@@ -12,7 +12,7 @@ class CameraTracking:
     """
 
     def __init__(self, mtx: np.ndarray, dist: np.ndarray,
-                 objp: np.ndarray, cell_size: int):
+                 objp: np.ndarray, cell_size: int, grid_size: tuple[int] = (9, 6)):
         """
         Initializes the CameraTracking instance.
 
@@ -20,27 +20,33 @@ class CameraTracking:
         :param dist: Distortion coefficients.
         :param objp: 3D object points for the chessboard.
         :param cell_size: Size of a single chessboard cell in some units.
+        :param grid_size: Number of rows and columns in a checkerboard.
         """
+        self.rows = grid_size[0]
+        self.cols = grid_size[1]
+
         self.mtx = mtx
         self.dist = dist
         self.objp = objp
         self.cell_size = cell_size
 
-    def test_image(self, dir: str, image: str):
+    def test_image(self, img: str | np.ndarray, source: str = 'file'):
         """
         Draw a polygon that covers the top side of the cube on the given img
 
-        :param dir: Directory of the image
-        :param image: Filename of the image
+        :param img: Filename of the image
+        :param source: Source of the img - file | variable.
         """
-        frame = cv.imread(f'./img/{image}')
-        rvec, tvec = self._process_frame(frame)
-        self._draw_objects(frame, rvec, tvec)
+        if source == 'file':
+            img = cv.imread(img)
+
+        rvec, tvec = self._process_frame(img)
+        self.draw_objects(img, rvec, tvec)
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"test_image_{timestamp}.png"
 
-        cv.imwrite(f'{dir}{filename}', frame)
+        cv.imwrite(f'{dir}{filename}', img)
 
     def track(self) -> None:
         """
@@ -69,7 +75,9 @@ class CameraTracking:
         :param frame: The input image frame.
         """
         self.gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        found, corners = cv.findChessboardCorners(self.gray, (9, 6), None)
+        found, corners = cv.findChessboardCorners(
+            self.gray, (self.rows, self.cols), None
+        )
         if not found:
             return
 
@@ -80,7 +88,7 @@ class CameraTracking:
         _, rvec, tvec = cv.solvePnP(self.objp, corners2, self.mtx, self.dist)
         return rvec, tvec
 
-    def _draw_objects(
+    def draw_objects(
         self, frame: np.ndarray, rvec: np.ndarray, tvec: np.ndarray
     ) -> None:
         """
