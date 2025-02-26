@@ -1,6 +1,8 @@
 import cv2 as cv
 import numpy as np
 
+from utils import extract_frames
+
 
 def create_background_model(video_path: str, num_frames: int = 15) -> np.ndarray:
     capture = cv.VideoCapture(video_path)
@@ -20,7 +22,7 @@ def create_background_model(video_path: str, num_frames: int = 15) -> np.ndarray
 
 
 def background_substraction(foreground_frame: np.ndarray, background_frame: np.ndarray, \
-                            threshold_sat: int, threshold_hue: int, threshold_val: int
+                            threshold_sat: int = 40, threshold_hue: int = 40, threshold_val: int = 50
                             ) -> np.ndarray:
     foreground_frame = cv.cvtColor(foreground_frame, cv.COLOR_BGR2HSV)
     background_frame = cv.cvtColor(background_frame, cv.COLOR_BGR2HSV)
@@ -41,10 +43,23 @@ def background_substraction(foreground_frame: np.ndarray, background_frame: np.n
 
     return foreground_mask
 
+def apply_morph_operations(mask: np.ndarray, kernel_size: int = 3, iterations: int = 3, loops: int = 1) -> np.ndarray:
+    kernel = np.ones((kernel_size, kernel_size))
 
-path = './data/cam1/background.avi'
-back = create_background_model(path, 10)
-frame = 
-cv.imshow('img', back)
+    for _ in range(loops):
+        mask = cv.erode(mask, kernel, iterations=iterations)
+        mask = cv.dilate(mask, kernel, iterations=iterations)
+
+    return mask
+
+
+back_path = './data/cam1/background.avi'
+fore_path = './data/cam1/video.avi'
+back = create_background_model(back_path, 10)
+frame = extract_frames(fore_path, 1)[0]
+
+mask = background_substraction(frame, back)
+mask = apply_morph_operations(mask, iterations=1, loops=2)
+cv.imshow('img', mask)
 cv.waitKey(0)
 cv.destroyAllWindows()
