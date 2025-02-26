@@ -42,3 +42,23 @@ def generate_xml(filename: str, calibration_dict: dict) -> None:
     fs.write("TranslationVector", calibration_dict['tvec'])
 
     fs.release()
+
+
+def read_xml(filename: str) -> dict:
+    """
+    Reads calibration data from an XML file and returns it as a dictionary.
+
+    :param filename: Path to the XML file.
+    :return: Dictionary containing camera parameters.
+    """
+    fs = cv.FileStorage(filename, cv.FILE_STORAGE_READ)
+
+    calibration_dict = {
+        "mtx": fs.getNode("CameraMatrix").mat(),
+        "dist": fs.getNode("DistortionCoeffs").mat(),
+        "rvec": fs.getNode("RotationVector").mat(),
+        "tvec": fs.getNode("TranslationVector").mat()
+    }
+
+    fs.release()
+    return calibration_dict

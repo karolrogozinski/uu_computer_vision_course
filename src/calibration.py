@@ -9,12 +9,15 @@ class CameraCalibration:
     Handles camera calibration using chessboard pattern detection.
     """
 
-    def __init__(self, grid_size: tuple[int, int], cell_size: int):
+    def __init__(self, grid_size: tuple[int, int],
+                 cell_size: int, sort_corners: bool = True) -> None:
         """
         Initializes the CameraCalibration instance.
 
         :param grid_size: Number of inner corners per of a chessboard.
         :param cell_size: Size of a single chessboard cell in some units.
+        :param sort_corners: Flag to sort corners in order: (top-left, top-right,
+            bottom-left, bottom-right) during manual phase
         """
         self.criteria = (
             cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -23,6 +26,7 @@ class CameraCalibration:
         self.objp[:, :2] = np.mgrid[
             0:grid_size[0], 0:grid_size[1]].T.reshape(-1, 2) * cell_size
         self.grid_size = grid_size
+        self.sort_corners = sort_corners
 
         self.reset_points()
 
@@ -91,7 +95,7 @@ class CameraCalibration:
         :param img: Image where manual selection is performed.
         :return: Manually selected corner coordinates.
         """
-        collector = ManualGrid(*self.grid_size)
+        collector = ManualGrid(*self.grid_size, self.sort_corners)
         cv.imshow('img', img)
         cv.setMouseCallback('img', collector.click_event)
         while cv.waitKey(0) != 13:  # press Enter when all corners passed
@@ -178,17 +182,20 @@ class ManualGrid:
     and interpolate grid points between them.
     """
 
-    def __init__(self, rows: int, cols: int) -> None:
+    def __init__(self, rows: int, cols: int, sort_corners: bool = True) -> None:
         """
         Initializes the ManualGrid with given rows and columns.
 
         :param rows: Number of rows in the grid, default is 9.
         :param cols: Number of columns in the grid, default is 6.
+        :param sort_corners: Flag to sort corners in order: (top-left, top-right,
+            bottom-left, bottom-right) during manual phase
         """
         self.grid: np.ndarray = np.zeros([rows * cols, 1, 2], dtype=np.float32)
         self.points: list[list[int]] = []
         self.rows: int = rows
         self.cols: int = cols
+        self.sort_corners = sort_corners
 
     def click_event(self, event: int, x: int, y: int,
                     flags: int, param) -> None:
@@ -210,7 +217,12 @@ class ManualGrid:
         Interpolates a grid of points based on the user-provided corner points.
         Outputs the grid column by column instead of row by row.
         """
-        top_left, top_right, bot_left, bot_right = self.sorted_corners()
+        if self.sort_corners:
+            top_left, top_right, bot_left, bot_right = self.sorted_corners()
+        else:
+            ...
+            top_left, top_right, bot_left, bot_right = self.points[-4:]
+            # TODO load last 4 corners in given order
 
         top_row = [
             self.interpolate_pair(top_left, top_right, i / (self.cols - 1))
