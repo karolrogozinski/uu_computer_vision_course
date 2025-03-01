@@ -74,18 +74,19 @@ class CameraCalibration:
         gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         ret, corners = cv.findChessboardCorners(gray, self.grid_size, None)
 
-        if not ret:
+        if not ret:#True: #not ret:
             corners = self._manual_corner_selection(img)
-        corners2 = cv.cornerSubPix(
-            gray, corners, (11, 11), (-1, -1), self.criteria)
+        if corners is not None:
+            corners2 = cv.cornerSubPix(
+                gray, corners, (11, 11), (-1, -1), self.criteria)
 
-        self.objpoints.append(self.objp)
-        self.imgpoints.append(corners2)
-        self.detected_automatically.append(ret)
+            self.objpoints.append(self.objp)
+            self.imgpoints.append(corners2)
+            self.detected_automatically.append(ret)
 
-        cv.drawChessboardCorners(img, self.grid_size, corners2, True)
-        cv.imshow('img', img)
-        cv.waitKey(50)  # Display time - can be adjusted
+            cv.drawChessboardCorners(img, self.grid_size, corners2, True)
+            cv.imshow('img', img)
+            cv.waitKey(2000)  # Display time - can be adjusted
 
     def _manual_corner_selection(self, img: np.ndarray) -> np.ndarray:
         """
@@ -98,8 +99,14 @@ class CameraCalibration:
         collector = ManualGrid(*self.grid_size, self.sort_corners)
         cv.imshow('img', img)
         cv.setMouseCallback('img', collector.click_event)
-        while cv.waitKey(0) != 13:  # press Enter when all corners passed
-            pass
+        while True:
+            key = cv.waitKey(0)
+            if key == 13:  # Enter key (confirm selection)
+                break
+            elif key == ord('s'):  # "s" key (cancel selection)
+                cv.destroyAllWindows()
+                print("Skipped image")
+                return None
         collector.interpolate()
         return collector.grid
 

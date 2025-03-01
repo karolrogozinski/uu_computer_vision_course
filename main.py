@@ -12,7 +12,7 @@ GRID_SIZE = (6, 8)
 REAL_CELL_SIZE_MM = 115
 IMAGE_SIZE = (486, 644)
 REJECTION_TRESHOLD = 100
-FRAME_SAMPLING = 25
+FRAME_SAMPLING = 30
 SORT_CORNERS = False
 
 
@@ -41,7 +41,8 @@ def assigment_1() -> None:
 
 def assigment_2(calibration: bool = False) -> None:
 
-    cameras = ['cam1', 'cam2', 'cam3', 'cam4']
+    cameras = ['cam4']
+    # cameras = ['cam1', 'cam2', 'cam3', 'cam4']
     calibration_dict = dict()
 
     if calibration:
@@ -81,6 +82,7 @@ def assigment_2(calibration: bool = False) -> None:
 
             tracker = CameraTracking(mtx, dist, calibration.objp,
                                      REAL_CELL_SIZE_MM, GRID_SIZE)
+            tracker.plot_camera_position("tests")
             _, rvec, tvec = cv.solvePnP(objp, corners, mtx, dist)
 
             frames = extract_frames(video_path, 1)
@@ -95,15 +97,15 @@ def assigment_2(calibration: bool = False) -> None:
 
             generate_xml(f"data/{camera}/config.xml", calibration_dict[camera])
 
-        # Read saved configs
-        else:
+    # Read saved configs
+    else:
+        for camera in cameras:
+            calibration_dict[camera] = read_xml(f"data/{camera}/config.xml")
 
-            for camera in cameras:
-                calibration_dict[camera] = read_xml(f"data/{camera}/config.xml")
 
 
 def main() -> None:
-    assigment_2()
+    assigment_2(False)
 
 
 if __name__ == '__main__':
