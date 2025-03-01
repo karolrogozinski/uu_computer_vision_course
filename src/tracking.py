@@ -141,9 +141,9 @@ class CameraTracking:
         origin = np.int32(origin).reshape(2)
 
         thickness = 2
-        cv.line(img, origin, tuple(imgpts[1]), (0, 0, 255), thickness)
-        cv.line(img, origin, tuple(imgpts[2]), (0, 255, 0), thickness)
-        cv.line(img, origin, tuple(imgpts[3]), (255, 0, 0), thickness)
+        cv.line(img, origin, tuple(imgpts[1]), (0, 0, 255), thickness)  # red
+        cv.line(img, origin, tuple(imgpts[2]), (0, 255, 0), thickness)  # green
+        cv.line(img, origin, tuple(imgpts[3]), (255, 0, 0), thickness)  # blue
 
     @staticmethod
     def draw_cube(

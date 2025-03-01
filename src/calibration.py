@@ -74,7 +74,7 @@ class CameraCalibration:
         gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         ret, corners = cv.findChessboardCorners(gray, self.grid_size, None)
 
-        if not ret:#True: #not ret:
+        if True: #not ret:
             corners = self._manual_corner_selection(img)
         if corners is not None:
             corners2 = cv.cornerSubPix(

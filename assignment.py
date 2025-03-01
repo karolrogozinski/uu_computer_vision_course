@@ -15,16 +15,6 @@ WORLD_HEIGHT = 64
 WORLD_DEPTH = 128
 
 
-def scale_camera_positions(camera_positions):
-    positions = np.array(camera_positions)
-
-    positions[:, 0] = (positions[:, 0] / np.max(np.abs(positions[:, 0]))) * (WORLD_WIDTH / 2)
-    positions[:, 1] = (positions[:, 1] / np.max(np.abs(positions[:, 1]))) * WORLD_HEIGHT
-    positions[:, 2] = (positions[:, 2] / np.max(np.abs(positions[:, 2]))) * (WORLD_DEPTH / 2)
-
-    return positions.tolist()
-
-
 def generate_grid(width, depth):
     # Generates the floor grid locations
     # You don't need to edit this function
@@ -51,17 +41,21 @@ def set_voxel_positions(width, height, depth):
 
 def get_cam_positions():
     calibration_dict = dict()
+    camera_positions = list()
     cameras = ['cam1', 'cam2', 'cam3', 'cam4']
 
     for camera in cameras:
         calibration_dict[camera] = read_xml(f"data/{camera}/config.xml")
-    indices = np.array([0, 2, 1])
-    camera_positions = [calibration_dict[c]['tvec'].flatten()[indices] / 50
-                        for c in cameras]
-    
-    # camera_positions = scale_camera_positions(camera_positions)
-    # camera_positions = camera_positions / 100
+        rvec = calibration_dict[camera]['rvec']
+        tvec = calibration_dict[camera]['tvec']
 
+        R, _ = cv.Rodrigues(rvec)
+        R_inv = R.T  # R^{-1} = R^T dla macierzy rotacyjnych
+        camera_position = -np.dot(R_inv, tvec).flatten()[[0, 2, 1]]
+        camera_position[1] = -camera_position[1]
+        camera_positions.append(camera_position)
+
+    print(camera_positions)
 
     return camera_positions, \
         [[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0], [1.0, 1.0, 0]]
@@ -74,14 +68,28 @@ def get_cam_rotation_matrices():
     for camera in cameras:
         calibration_dict[camera] = read_xml(f"data/{camera}/config.xml")
 
-    rotations = list()
-    for c in cameras:
-        rvecs = calibration_dict[c]['rvec']
-        rvecs, _ = cv.Rodrigues(rvecs)
-        # rvecs = rvecs.tolist()
-        rotations.append(rvecs)
+    camera_rotations = list()
+    for camera in cameras:
+        rvec = calibration_dict[camera]['rvec']
 
-    glm_matrices = list()
-    for rot in rotations:
-        glm_matrices.append(glm.mat4(glm.mat3(*rot.flatten())))
-    return glm_matrices
+        # Konwersja wektora rotacji do macierzy rotacji
+        R, _ = cv.Rodrigues(rvec)
+        R_inv = R.T
+
+        R_inv[[1, 2], :] = -R_inv[[1, 2], :]
+
+        R_inv = R_inv[[0, 2, 1], :]  
+        R_inv[1, :] = -R_inv[1, :]
+
+        look_at_fix = np.array([
+            [0, 0, -1],  
+            [0, 1, 0],  
+            [1, 0, 0]   
+        ])
+        R_corrected = np.dot(look_at_fix, R_inv)
+        
+        glm_matrix = glm.mat4(glm.mat3(*R_corrected.flatten()))
+        camera_rotations.append(glm_matrix)
+
+    print(camera_rotations)
+    return camera_rotations

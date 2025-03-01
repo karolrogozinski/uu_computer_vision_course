@@ -12,7 +12,7 @@ GRID_SIZE = (6, 8)
 REAL_CELL_SIZE_MM = 115
 IMAGE_SIZE = (486, 644)
 REJECTION_TRESHOLD = 100
-FRAME_SAMPLING = 30
+FRAME_SAMPLING = 10
 SORT_CORNERS = False
 
 
@@ -103,9 +103,8 @@ def assigment_2(calibration: bool = False) -> None:
             calibration_dict[camera] = read_xml(f"data/{camera}/config.xml")
 
 
-
 def main() -> None:
-    assigment_2(False)
+    assigment_2(True)
 
 
 if __name__ == '__main__':
