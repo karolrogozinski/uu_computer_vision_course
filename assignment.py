@@ -52,11 +52,6 @@ def set_voxel_positions(width, height, depth):
         camera_params.append((R_corrected, tvec_world, K, dist, mask))
 
     data, colors = [], []
-
-    voxel_maps = dict()
-    for i in range(len(cameras)):
-        voxel_maps[i] = np.zeros((width, height, depth))
-
     for x in range(width):
         for y in range(height):
             for z in range(depth):
@@ -114,7 +109,6 @@ def set_voxel_positions(width, height, depth):
                     if 0 <= x_proj < mask.shape[1] and 0 <= y_proj < mask.shape[0]:
                         if mask[y_proj, x_proj] > 0:
                             visible_cameras.append(i)
-                            voxel_maps[i][int(voxel[0, 0]), int(voxel[0, 1]), int(voxel[0, 2])] = 1
 
                 if visible_cameras:
                     if visible_cameras != [1, 2]:
