@@ -2,6 +2,7 @@ import glm
 import glfw
 from engine.base.program import get_linked_program
 from engine.renderable.model import Model
+from engine.renderable.mesh import Mesh
 from engine.buffer.texture import *
 from engine.buffer.hdrbuffer import HDRBuffer
 from engine.buffer.blurbuffer import BlurBuffer
@@ -10,7 +11,7 @@ from assignment import set_voxel_positions, generate_grid, get_cam_positions, ge
 from engine.camera import Camera
 from engine.config import config
 
-cube, hdrbuffer, blurbuffer, lastPosX, lastPosY = None, None, None, None, None
+cube, hdrbuffer, blurbuffer, lastPosX, lastPosY, horse = None, None, None, None, None, None
 firstTime = True
 window_width, window_height = config['window_width'], config['window_height']
 camera = Camera(glm.vec3(0, 100, 0), pitch=-90, yaw=0, speed=40)
@@ -44,7 +45,7 @@ def draw_objs(obj, program, perspective, light_pos, texture, normal, specular, d
 
 
 def main():
-    global hdrbuffer, blurbuffer, cube, window_width, window_height
+    global hdrbuffer, blurbuffer, cube, window_width, window_height, horse
 
     if not glfw.init():
         print('Failed to initialize GLFW.')
@@ -110,6 +111,7 @@ def main():
     cam_shapes = [Model('resources/models/camera.json', cam_rot_matrices[c]) for c in range(4)]
     square = Model('resources/models/square.json')
     cube = Model('resources/models/cube.json')
+    horse = Model('resources/models/cube.json')
     texture = load_texture_2d('resources/textures/diffuse.jpg')
     texture_grid = load_texture_2d('resources/textures/diffuse_grid.jpg')
     normal = load_texture_2d('resources/textures/normal.jpg')
@@ -141,7 +143,8 @@ def main():
         glClearColor(0.1, 0.2, 0.8, 1)
 
         square.draw_multiple(depth_program)
-        cube.draw_multiple(depth_program)
+        # cube.draw_multiple(depth_program)
+        cube.draw(depth_program)
         for cam in cam_shapes:
             cam.draw_multiple(depth_program)
 

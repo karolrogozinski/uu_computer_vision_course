@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 
-from utils import extract_frames
+from src.utils import extract_frames
 
 
 def create_background_model(video_path: str, num_frames: int = 15) -> np.ndarray:
@@ -91,7 +91,7 @@ def combine_masks(masks: list[np.ndarray], threshold: float = 0.5) -> np.ndarray
     avg_mask = np.mean(stacked_masks, axis=0)
 
     mask = (avg_mask > (threshold * 255)).astype(np.uint8) * 255
-    
+
     return mask
 
 
@@ -113,12 +113,3 @@ def create_mask(back_path: str, fore_path: str) -> np.ndarray:
     mask = combine_masks(masks)
 
     return mask
-
-
-back_path = './data/cam1/background.avi'
-fore_path = './data/cam1/video.avi'
-mask = create_mask(back_path, fore_path)
-print(mask)
-cv.imshow('img', mask)
-cv.waitKey(0)
-cv.destroyAllWindows()

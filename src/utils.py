@@ -57,7 +57,7 @@ def read_xml(filename: str) -> dict:
         "mtx": fs.getNode("CameraMatrix").mat(),
         "dist": fs.getNode("DistortionCoeffs").mat(),
         "rvec": fs.getNode("RotationVector").mat(),
-        "tvec": fs.getNode("TranslationVector").mat()/90,
+        "tvec": fs.getNode("TranslationVector").mat()/32,
     }
 
     fs.release()

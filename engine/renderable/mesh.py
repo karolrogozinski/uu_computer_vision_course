@@ -79,6 +79,7 @@ class Mesh:
 
     def set_multiple_positions(self, positions, colors):
         assert len(positions) == len(colors), f'len(positions), {len(positions)}, must be equal to len(colors), {len(colors)}'
+
         data = np.array(positions, dtype=np.float32)
         glBindVertexArray(self.VAO)
         glBindBuffer(GL_ARRAY_BUFFER, self.VBO_POS)
